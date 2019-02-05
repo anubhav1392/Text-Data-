@@ -89,20 +89,18 @@ print('Null word embeddings: %d' % np.sum(np.sum(embedd_matrix, axis=1) == 0))
 ########################################
 print('Model Training')
 model=Sequential()
-model.add(Embedding(30000,300))
-model.add(Dropout(0.3))
+model.add(Embedding(30000,300,input_length=15))
+model.add(Dropout(0.4))
 model.layers[0].set_weights([embedd_matrix])
 model.layers[0].trainable = False
 model.add(LSTM(64,activation='tanh',kernel_initializer='he_normal',return_sequences=True,use_bias=True))
 model.add(LSTM(128,activation='tanh',kernel_initializer='he_normal',use_bias=True,return_sequences=True))
 model.add(LSTM(256,activation='tanh',kernel_initializer='he_normal',use_bias=True))
 model.add(Dense(1,activation='sigmoid'))
-model.layers[0].set_weights([embedd_matrix])
-model.layers[0].trainable=False
 model.compile(loss='binary_crossentropy',optimizer='rmsprop',metrics=['accuracy'])
 model.summary()
 
-history=model.fit(train_data_prepd,labels,epochs=5,batch_size=50,validation_split=0.2)
+history=model.fit(train_data_prepd,labels,epochs=6,batch_size=80,validation_split=0.2)
 model.save(r'C:\Users\Anu\Downloads\Compressed\all_5\model.h5')
 
 ##################################################################################
@@ -122,12 +120,29 @@ plt.title('Training and validation loss')
 plt.legend()
 plt.show()
 
+#####################Test data Submission
+filtered_test_data=text_cleaning(test_data['question_text'])
+tokenize.fit_on_texts(filtered_test_data)
+sequences_test=tokenize.texts_to_sequences(filtered_test_data)
+test_data_prepd=pad_sequences(sequences_test,maxlen=15)
+
+#Load Model and Create Predictions
+from keras.models import load_model
+clf_model=load_model(r'C:\Users\Anu\Downloads\Compressed\all_5\model.h5')
+predictions=clf_model.predict_classes(test_data_prepd)
+predictions=np.reshape(predictions,(1*56370))
 
 
+pred_submission=[]
+tmp=[]
+for index in range(len(test_data)):
+    tmp.append([test_data.iloc[index,0],predictions[index]])
+    
+pred_submission=pd.DataFrame(tmp,columns=['qid','predictions'])
 
-
-
-
+#Submission
+sub=pd.read_csv(r'C:\Users\Anu\Downloads\Compressed\all_5\sample_submission.csv')
+sub.to_csv('sample_submission.csv',index=False)
 
 
 
